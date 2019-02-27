@@ -16,19 +16,12 @@
 using namespace std;
 
 void pause();
-
-/*
-#ifndef UNICODE  
-typedef std::string String;
-#else
-typedef std::wstring String;
-#endif
-*/
+void showSQLErrorMsg(unsigned int handleType, const SQLHANDLE& handle);
 
 string dbString = ".\\OMSQL";
 string dbName = "OMSQLDB";
 
-int main()
+/*int main()
 {
 #define SQL_QUERY_SIZE 1000
 
@@ -53,28 +46,39 @@ int main()
 		exit(-3);
 	}
 
-	string connectionString = "DRIVER={SQL Server};SERVER=" + dbString + ", 1433;DATABASE=" + dbName +  ";UID=OM_USER;PWD=OMSQL@2004;";
+
+
+	//string connectionString1 = "DRIVER={SQL Server};SERVER=" + dbString + ", 1433;DATABASE=" + dbName +  ";UID=OM_USER;PWD=OMSQL@2004";
+	string connectionString = "Data Source=.\\OMSQL;Initial Catalog=OMSQLDB;Persist Security Info=True;User ID=sa;PWD=OMateSQL@2007";
+	//Data Connection string from SSMS:
+	//                         Data Source=.\OMSQL;Initial Catalog=OMSQLDB;Persist Security Info=True;User ID=sa;Password=OMateSQL@2007
+
+	//Tried below connection strings or formats:
+
+	//L"DRIVER={SQL Server};SERVER=localhost, 1433;DATABASE=master;UID=username;PWD=password;",
 	//L"DRIVER={SQL Server};SERVER=ServerAddress, 1433;DATABASE=DataBaseName;UID=DataBaseUserName;PWD=PassWord;",
 	//L"DRIVER={SQL Server};SERVER=.\OMSQL, 1433;DATABASE=OMSQLDB;UID=OM_USER;PWD=OMSQL@2004;"
 
 	//DEBUG INFO
-	cout << left << setw(10) << "Connection String: " << connectionString << string(2, '\n');
+	cout << left << setw(10) << "Connection String: " << connectionString.c_str() << string(2, '\n');
+	cout << left << setw(10) << "Attempting to connect to database server..." << string(1, '\n');
 
 	switch (SQLDriverConnectW(sqlConnectionH, NULL, (SQLWCHAR*)connectionString.c_str(), SQL_NTS, ConnectionReturn, 1024, NULL, SQL_DRIVER_NOPROMPT)) {
 	case SQL_SUCCESS:
-		cout << "Successfully connected to SQL Server - CODE 0" << endl;
+		cout << "Successfully connected to SQL Server - 0" << endl;
 		break;
 	case SQL_SUCCESS_WITH_INFO:
-		cout << "Successfully connected to SQL Server - CODE 1" << endl;
+		cout << "Successfully connected to SQL Server - 1" << endl;
 		break;
 	case SQL_INVALID_HANDLE:
-		cout << "Could not connect to SQL Server - CODE 2" << endl;
+		cout << "Could not connect to SQL Server - Er2" << endl;
 		break;
 	case SQL_ERROR:
-		cout << "Could not connect to SQL Server - CODE 3" << endl;
+		cout << "Could not connect to SQL Server - Er3" << endl;
 		break;
 	}
-			
+
+
 	pause();
 	return 0;
 }
@@ -288,10 +292,102 @@ Returns
 SQL_SUCCESS, SQL_SUCCESS_WITH_INFO, SQL_ERROR, or SQL_INVALID_HANDLE.
 */
 
+int main() {
+
+	SQLHANDLE SQLEnvHandle = NULL;
+	SQLHANDLE SQLConnectionHandle = NULL;
+	SQLHANDLE SQLStatementHandle = NULL;
+	SQLRETURN retCode = 0;
+	char SQLQuery[] = "SELECT * FROM patient";
+
+	do {
+		if (SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &SQLEnvHandle) == SQL_ERROR) {
+			break;
+		}
+		if (SQLSetEnvAttr(SQLEnvHandle, SQL_ATTR_ODBC_VERSION, (SQLPOINTER)SQL_OV_ODBC3, 0) == SQL_ERROR) {
+			break;
+		} 
+		if (SQLAllocHandle(SQL_HANDLE_DBC, SQLEnvHandle, &SQLConnectionHandle) == SQL_ERROR) {
+			break;
+		}
+		if (SQLSetConnectAttr(SQLConnectionHandle, SQL_LOGIN_TIMEOUT, (SQLPOINTER)5, 0) == SQL_ERROR) {
+			break;
+		}
+
+		SQLCHAR retConString[1024];
+		switch (SQLDriverConnect(SQLConnectionHandle, NULL, (SQLCHAR*)"DRIVER={SQL Server}; SERVER=localhost\\OMSQL, 1433; DATABASE=OMSQLDB; UID=OM_USER; PWD=OMSQL@2004;", SQL_NTS, retConString, 1024, NULL, SQL_DRIVER_NOPROMPT)) {
+		case SQL_SUCCESS:
+			cout << "Success - SQL_SUCESS" << endl;
+			break;
+		case SQL_SUCCESS_WITH_INFO:
+			cout << "Success - SQL_SUCCESS_WITH_INFO" << endl;
+			break;
+		case SQL_NO_DATA_FOUND:
+			cout << "Error - SQL_NO_DATA_FOUND" << endl;
+			showSQLErrorMsg(SQL_HANDLE_DBC, SQLConnectionHandle);
+			retCode = -1;
+			break;
+		case SQL_INVALID_HANDLE:
+			cout << "Error - SQL_INVALID_HANDLE" << endl;
+			showSQLErrorMsg(SQL_HANDLE_DBC, SQLConnectionHandle);
+			retCode = -1;
+			break;
+		case SQL_ERROR:
+			cout << "Error - SQL_ERROR" << endl;
+			showSQLErrorMsg(SQL_HANDLE_DBC, SQLConnectionHandle);
+			retCode = -1;
+			break;
+		}
+
+		if (retCode == -1)
+			break;
+
+		if (SQLAllocHandle(SQL_HANDLE_STMT, SQLConnectionHandle, &SQLStatementHandle) == SQL_ERROR) {
+			cout << left << setw(10) << "Error allocating SQL Statement Handle" << endl;
+			break;
+		}
+
+		if (SQLExecDirect(SQLStatementHandle, (SQLCHAR*)SQLQuery, SQL_NTS) == SQL_ERROR) {
+			cout << left << setw(10) << "Error allocating SQL Statement Handle" << endl;
+			showSQLErrorMsg(SQL_HANDLE_STMT, SQLStatementHandle);
+			break;
+		}
+		else 
+		{	
+			int patientID;
+			char first_name[256];
+			char last_name[256];
+			while (SQLFetch(SQLStatementHandle) == SQL_SUCCESS) {
+				SQLGetData(SQLStatementHandle, 1, SQL_C_DEFAULT, &first_name, size(first_name), NULL);
+				SQLGetData(SQLStatementHandle, 2, SQL_C_DEFAULT, &last_name, size(last_name), NULL);
+				cout << left << setw(10) << first_name << " " << last_name << endl;
+			}
+		}
+
+	} while (FALSE);
+
+	SQLFreeHandle(SQL_HANDLE_STMT, SQLStatementHandle);
+	SQLDisconnect(SQLConnectionHandle);
+	SQLFreeHandle(SQL_HANDLE_DBC, SQLConnectionHandle);
+	SQLFreeHandle(SQL_HANDLE_ENV, SQLEnvHandle);
+
+	pause();
+	return 0;
+}
+
 void pause() {
 	char a;
 	cout << string(2, '\n') << "Press any Key to Continue... ";
 	a = _getch();
+}
 
+void showSQLErrorMsg(unsigned int handleType, const SQLHANDLE& handle) {
 
+	SQLCHAR SQLState[1024];
+	SQLCHAR message[1024];
+
+	if (SQL_SUCCESS == SQLGetDiagRec(handleType, handle, 1, SQLState, NULL, message, 1024, NULL)) {
+		cout << left << setw(10) << "ODBC Driver Message: " << message << endl;
+		cout << left << setw(10) << "ODBC SQL State: " << SQLState << endl;
+	}
 }
