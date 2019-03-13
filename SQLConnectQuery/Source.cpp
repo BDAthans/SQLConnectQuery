@@ -298,7 +298,6 @@ int main() {
 	SQLHANDLE SQLConnectionHandle = NULL;
 	SQLHANDLE SQLStatementHandle = NULL;
 	SQLRETURN retCode = 0;
-	char SQLQuery[] = "SELECT * FROM patient";
 
 	do {
 		if (SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &SQLEnvHandle) == SQL_ERROR) {
@@ -314,26 +313,31 @@ int main() {
 			break;
 		}
 
+		//ConnectionString from VS: (SQLCHAR*)"Data Source = .\OMSQL; Initial Catalog = OMSQLDB; Persist Security Info = True; User ID = sa; Password = ********;"
+		//ConnectionString from Tutorial: (SQLCHAR*)"DRIVER={SQL Server}; SERVER=127.0.0.1\\OMSQL, 1433; DATABASE=OMSQLDB; UID=OM_USER; PWD=OMSQL@2004;"
+		//From ConnectionString.com: (SQLCHAR*)"Driver={SQL Server Native Client 11.0};Server=myServerAddress; Database=myDataBase;Uid=myUsername;Pwd=myPassword;"
+		// Previously tried ConnectionString: "DRIVER={SQL Server}; SERVER = .\\OMSQL, 1433; Initial Catalog = OMSQLDB; Persist Security Info = True; User ID = OM_USER; Password = OMSQL@2004;"
+
 		SQLCHAR retConString[1024];
-		switch (SQLDriverConnect(SQLConnectionHandle, NULL, (SQLCHAR*)"DRIVER={SQL Server}; SERVER=localhost\\OMSQL, 1433; DATABASE=OMSQLDB; UID=OM_USER; PWD=OMSQL@2004;", SQL_NTS, retConString, 1024, NULL, SQL_DRIVER_NOPROMPT)) {
+		switch (SQLDriverConnect(SQLConnectionHandle, NULL, (SQLCHAR*)"DRIVER={SQL Server Native Client 11.0}; SERVER=.\\OMSQL; DATABASE=OMSQLDB;Uid=OM_USER;Pwd=OMSQL@2004;", SQL_NTS, retConString, 1024, NULL, SQL_DRIVER_NOPROMPT)) {
 		case SQL_SUCCESS:
-			cout << "Success - SQL_SUCESS" << endl;
+			cout << "Success - SQL_SUCESS" << string(2, '\n');;
 			break;
 		case SQL_SUCCESS_WITH_INFO:
-			cout << "Success - SQL_SUCCESS_WITH_INFO" << endl;
+			cout << "Success - SQL_SUCCESS_WITH_INFO" << string(2, '\n');;
 			break;
 		case SQL_NO_DATA_FOUND:
-			cout << "Error - SQL_NO_DATA_FOUND" << endl;
+			cout << "Error - SQL_NO_DATA_FOUND" << string(2, '\n');;
 			showSQLErrorMsg(SQL_HANDLE_DBC, SQLConnectionHandle);
 			retCode = -1;
 			break;
 		case SQL_INVALID_HANDLE:
-			cout << "Error - SQL_INVALID_HANDLE" << endl;
+			cout << "Error - SQL_INVALID_HANDLE" << string(2, '\n');;
 			showSQLErrorMsg(SQL_HANDLE_DBC, SQLConnectionHandle);
 			retCode = -1;
 			break;
 		case SQL_ERROR:
-			cout << "Error - SQL_ERROR" << endl;
+			cout << "Error - SQL_ERROR" << string(2, '\n');
 			showSQLErrorMsg(SQL_HANDLE_DBC, SQLConnectionHandle);
 			retCode = -1;
 			break;
@@ -347,6 +351,10 @@ int main() {
 			break;
 		}
 
+		// Execute Query to get information or do procedure
+		char SQLQuery[] = "SELECT patient_no, first_name, last_name FROM patient";
+
+		//Allocating Handle for SQLStatementHandle and using char Query[]
 		if (SQLExecDirect(SQLStatementHandle, (SQLCHAR*)SQLQuery, SQL_NTS) == SQL_ERROR) {
 			cout << left << setw(10) << "Error allocating SQL Statement Handle" << endl;
 			showSQLErrorMsg(SQL_HANDLE_STMT, SQLStatementHandle);
@@ -358,14 +366,17 @@ int main() {
 			char first_name[256];
 			char last_name[256];
 			while (SQLFetch(SQLStatementHandle) == SQL_SUCCESS) {
-				SQLGetData(SQLStatementHandle, 1, SQL_C_DEFAULT, &first_name, size(first_name), NULL);
-				SQLGetData(SQLStatementHandle, 2, SQL_C_DEFAULT, &last_name, size(last_name), NULL);
-				cout << left << setw(10) << first_name << " " << last_name << endl;
+				SQLGetData(SQLStatementHandle, 1, SQL_C_DEFAULT, &patientID, sizeof(patientID)+1, NULL);
+				SQLGetData(SQLStatementHandle, 2, SQL_C_DEFAULT, &first_name, size(first_name), NULL);
+				SQLGetData(SQLStatementHandle, 3, SQL_C_DEFAULT, &last_name, size(last_name), NULL);
+				cout << right << setw(10) << patientID << " " << first_name << " " << last_name << endl;
 			}
 		}
 
 	} while (FALSE);
 
+
+	//Free SQL Handles that were previously in use
 	SQLFreeHandle(SQL_HANDLE_STMT, SQLStatementHandle);
 	SQLDisconnect(SQLConnectionHandle);
 	SQLFreeHandle(SQL_HANDLE_DBC, SQLConnectionHandle);
@@ -375,19 +386,19 @@ int main() {
 	return 0;
 }
 
-void pause() {
-	char a;
-	cout << string(2, '\n') << "Press any Key to Continue... ";
-	a = _getch();
-}
-
 void showSQLErrorMsg(unsigned int handleType, const SQLHANDLE& handle) {
-
+	//Function shows error message and state derived from preliminary function return message
 	SQLCHAR SQLState[1024];
 	SQLCHAR message[1024];
 
 	if (SQL_SUCCESS == SQLGetDiagRec(handleType, handle, 1, SQLState, NULL, message, 1024, NULL)) {
-		cout << left << setw(10) << "ODBC Driver Message: " << message << endl;
-		cout << left << setw(10) << "ODBC SQL State: " << SQLState << endl;
+		cout << left << setw(10) << "ODBC Driver Message: " << message << string(2, '\n');;
+		cout << left << setw(10) << "ODBC SQL State: " << SQLState << string(2, '\n');;
 	}
+}
+
+void pause() {
+	char a;
+	cout << string(2, '\n') << "Press any Key to Continue... ";
+	a = _getch();
 }
