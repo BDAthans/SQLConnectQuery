@@ -18,8 +18,9 @@ using namespace std;
 void pause();
 void showSQLErrorMsg(unsigned int handleType, const SQLHANDLE& handle);
 
-SQLCHAR dbString[] = ".\\OMSQL";
-SQLCHAR dbName[] = "OMSQLDB";
+// Test strings to pass into connection string, change if instance and database are different
+string dbString = ".\\OMSQL";
+string dbName = "OMSQLDB";
 
 int main() {
 
@@ -48,8 +49,8 @@ int main() {
 		// Previously tried ConnectionString: "DRIVER={SQL Server}; SERVER = .\\OMSQL, 1433; Initial Catalog = OMSQLDB; Persist Security Info = True; User ID = OM_USER; Password = OMSQL@2004;"
 
 		SQLCHAR retConString[1024];
-		SQLCHAR ConnectionString[] = "DRIVER={SQL Server Native Client 11.0}; SERVER=.\\OMSQL; DATABASE=OMSQLDB;Uid=OM_USER;Pwd=OMSQL@2004;";
-		switch (SQLDriverConnect(SQLConnectionHandle, NULL, ConnectionString, SQL_NTS, retConString, 1024, NULL, SQL_DRIVER_NOPROMPT)) {
+		string ConnectionString = "DRIVER={SQL Server Native Client 11.0}; SERVER=" + dbString + "; DATABASE=" + dbName + ";Uid=OM_USER;Pwd=OMSQL@2004;";
+		switch (SQLDriverConnect(SQLConnectionHandle, NULL, (SQLCHAR*)ConnectionString.c_str(), SQL_NTS, retConString, 1024, NULL, SQL_DRIVER_NOPROMPT)) {
 		case SQL_SUCCESS:
 			cout << "Success - SQL_SUCESS" << string(2, '\n');;
 			break;
