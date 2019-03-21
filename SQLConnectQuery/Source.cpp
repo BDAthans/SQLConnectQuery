@@ -19,8 +19,8 @@ void pause();
 void showSQLErrorMsg(unsigned int handleType, const SQLHANDLE& handle);
 
 // Test strings to pass into connection string, change if instance and database are different
-string dbString = ".\\OMSQL";
-string dbName = "OMSQLDB";
+string DataSource = ".\\OMSQL";
+string DatabaseName = "OMSQLDB";
 
 int main() {
 
@@ -29,22 +29,17 @@ int main() {
 	SQLHANDLE SQLStatementHandle = NULL;
 	SQLRETURN retCode = 0;
 
-	do {
 		if (SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &SQLEnvHandle) == SQL_ERROR) {
-			break;
 		}
 		if (SQLSetEnvAttr(SQLEnvHandle, SQL_ATTR_ODBC_VERSION, (SQLPOINTER)SQL_OV_ODBC3, 0) == SQL_ERROR) {
-			break;
 		} 
 		if (SQLAllocHandle(SQL_HANDLE_DBC, SQLEnvHandle, &SQLConnectionHandle) == SQL_ERROR) {
-			break;
 		}
 		if (SQLSetConnectAttr(SQLConnectionHandle, SQL_LOGIN_TIMEOUT, (SQLPOINTER)5, 0) == SQL_ERROR) {
-			break;
 		}
 
 		SQLCHAR retConString[1024];
-		string ConnectionString = "DRIVER={SQL Server Native Client 11.0}; SERVER=" + dbString + "; DATABASE=" + dbName + ";Uid=OM_USER;Pwd=OMSQL@2004;";
+		string ConnectionString = "DRIVER={SQL Server Native Client 11.0}; SERVER=" + DataSource + "; DATABASE=" + DatabaseName + ";Uid=OM_USER;Pwd=OMSQL@2004;";
 		switch (SQLDriverConnect(SQLConnectionHandle, NULL, (SQLCHAR*)ConnectionString.c_str(), SQL_NTS, retConString, 1024, NULL, SQL_DRIVER_NOPROMPT)) {
 		case SQL_SUCCESS:
 			cout << "Success - SQL_SUCESS" << string(2, '\n');;
@@ -55,36 +50,27 @@ int main() {
 		case SQL_NO_DATA_FOUND:
 			cout << "Error - SQL_NO_DATA_FOUND" << string(2, '\n');;
 			showSQLErrorMsg(SQL_HANDLE_DBC, SQLConnectionHandle);
-			retCode = -1;
 			break;
 		case SQL_INVALID_HANDLE:
 			cout << "Error - SQL_INVALID_HANDLE" << string(2, '\n');;
 			showSQLErrorMsg(SQL_HANDLE_DBC, SQLConnectionHandle);
-			retCode = -1;
 			break;
 		case SQL_ERROR:
 			cout << "Error - SQL_ERROR" << string(2, '\n');
 			showSQLErrorMsg(SQL_HANDLE_DBC, SQLConnectionHandle);
-			retCode = -1;
 			break;
 		}
-
-		if (retCode == -1)
-			break;
 
 		if (SQLAllocHandle(SQL_HANDLE_STMT, SQLConnectionHandle, &SQLStatementHandle) == SQL_ERROR) {
 			cout << left << setw(10) << "Error allocating SQL Statement Handle" << endl;
-			break;
 		}
 
-		// Execute Query to get information or do procedure
 		char SQLQuery[] = "SELECT patient_no, first_name, last_name FROM patient ORDER BY patient_no ASC";
 
-		// Allocating Handle for SQLStatementHandle and using char Query[]
+		// Allocate Handle for SQLStatementHandle and using char Query[]
 		if (SQLExecDirect(SQLStatementHandle, (SQLCHAR*)SQLQuery, SQL_NTS) == SQL_ERROR) {
 			cout << left << setw(10) << "Error allocating SQL Statement Handle" << endl;
 			showSQLErrorMsg(SQL_HANDLE_STMT, SQLStatementHandle);
-			break;
 		}
 		else 
 		{	
@@ -100,9 +86,7 @@ int main() {
 			}
 		}
 
-	} while (FALSE);
-
-	// Free SQL Handles that were previously in use
+	// Free SQL Handles previously in use
 	SQLFreeHandle(SQL_HANDLE_STMT, SQLStatementHandle);
 	SQLDisconnect(SQLConnectionHandle);
 	SQLFreeHandle(SQL_HANDLE_DBC, SQLConnectionHandle);
